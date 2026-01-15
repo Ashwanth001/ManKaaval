@@ -93,7 +93,7 @@ def load_data():
     """Load predictions and time-series data from CSV files"""
     try:
         # Load baseline features with predictions
-        baseline_path = r"CdashboardData\baseline_features_predictions.csv"
+        baseline_path = r"dashboardData\baseline_features_predictions.csv"
         if not os.path.exists(baseline_path):
             st.error(f"❌ Baseline features file not found at: {baseline_path}")
             return pd.DataFrame(), pd.DataFrame(), [], pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
