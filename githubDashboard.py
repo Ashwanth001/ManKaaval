@@ -23,6 +23,24 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+# 🔍 DEBUG: Show file structure
+with st.expander("🔍 DEBUG: File Structure"):
+    st.write("Current directory:", os.getcwd())
+    st.write("Files in current directory:", os.listdir('.'))
+    
+    if os.path.exists('dashboardData'):
+        st.write("✅ dashboardData exists!")
+        st.write("Files:", os.listdir('dashboardData'))
+    else:
+        st.write("❌ dashboardData folder not found!")
+    
+    if os.path.exists('dataset'):
+        st.write("✅ dataset exists!")
+        st.write("Files:", os.listdir('dataset'))
+    else:
+        st.write("❌ dataset folder not found!")
+
+
 # ============================================================================
 # CUSTOM CSS
 # ============================================================================
@@ -160,19 +178,30 @@ def load_data():
 # ============================================================================
 @st.cache_resource
 def initialize_gee():
-    """Initialize Google Earth Engine with error handling"""
+    """Initialize Google Earth Engine with service account for cloud deployment"""
     try:
-        ee.Initialize(project="sandminingproject")
-        return True, "✅ Google Earth Engine initialized successfully"
-    except Exception as e1:
-        try:
-            # Try authentication flow
-            ee.Authenticate()
+        # Check if running on Streamlit Cloud (secrets available)
+        if "gee" in st.secrets:
+            # Use service account authentication (for deployment)
+            credentials = ee.ServiceAccountCredentials(
+                email=st.secrets["gee"]["service_account"],
+                key_data=st.secrets["gee"]["private_key"]
+            )
+            ee.Initialize(
+                credentials=credentials,
+                project=st.secrets["gee"]["project"]
+            )
+            return True, "✅ GEE initialized with service account"
+        else:
+            # Local development - use regular auth
             ee.Initialize(project="sandminingproject")
-            return True, "✅ GEE authenticated and initialized"
-        except Exception as e2:
-            error_msg = f"❌ GEE initialization failed: {str(e2)}"
-            return False, error_msg
+            return True, "✅ GEE initialized (local)"
+            
+    except Exception as e:
+        error_msg = f"❌ GEE initialization failed: {str(e)}"
+        st.error(error_msg)
+        return False, error_msg
+
 
 # ============================================================================
 # MAP CREATION WITH 1KM GRID (SIMPLIFIED - REMOVED REDUNDANT LAYERS)
