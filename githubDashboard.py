@@ -735,6 +735,7 @@ if not sca_ready_df.empty:
 # ============================================================================
 # LEFT COLUMN: INTERACTIVE MAP
 # ============================================================================
+
 with col_left:
     st.markdown("## 🛰️ Real-Time Satellite Surveillance (1km Grid)")
     st.markdown("*Click on any grid cell to view detailed analysis and trends*")
@@ -742,18 +743,21 @@ with col_left:
     if not sca_ready_df.empty:
         st.caption("🟢 **Green outlined sites** have sufficient time-series data for SCA analysis")
 
-    with st.spinner("🗺️ Loading satellite imagery and predictions..."):
-        gee_map = create_gee_river_grid(
-            df, gee_ready, None, False,
-            aoi_coords=None,
-            _prediction_df=df if not df.empty else None,
-            _ground_truth_df=None,
-            _sca_ready_df=sca_ready_df if not sca_ready_df.empty else None  # ← Pass the CSV data
-        )
+    # ✅ ONLY CREATE MAP ONCE - Cache the map object itself
+    if 'gee_map' not in st.session_state or st.session_state.get('force_map_refresh', False):
+        with st.spinner("🗺️ Loading satellite imagery and predictions..."):
+            st.session_state.gee_map = create_gee_river_grid(
+                df, gee_ready, None, False,
+                aoi_coords=None,
+                _prediction_df=df if not df.empty else None,
+                _ground_truth_df=None,
+                _sca_ready_df=sca_ready_df if not sca_ready_df.empty else None
+            )
+        st.session_state.force_map_refresh = False
 
-    # Render map
+    # ✅ RENDER CACHED MAP (fast!)
     map_output = st_folium(
-        gee_map,
+        st.session_state.gee_map,  # ← Use cached map
         width="100%",
         height=600,
         returned_objects=["last_clicked"],
@@ -778,6 +782,7 @@ with col_left:
             else:
                 st.session_state.selected_site = None
                 st.warning("⚠️ No mining site found at this location. Click closer to a grid cell.")
+
 
 # ============================================================================
 # RIGHT COLUMN: SITE ANALYSIS
