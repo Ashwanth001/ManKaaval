@@ -242,42 +242,64 @@ def get_sca_ready_layer(_sca_ready_df):
     Returns a visualization layer showing SCA-ready sites with green outlines.
     """
     if _sca_ready_df is None or _sca_ready_df.empty:
+        print("[SCA Layer] No SCA-ready sites to display")
         return None
     
+    print(f"[SCA Layer] Creating layer for {len(_sca_ready_df)} sites")
+    
     features = []
-    for row in _sca_ready_df.itertuples():
-        lon = float(row.lon)
-        lat = float(row.lat)
+    for idx, row in _sca_ready_df.iterrows():
+        try:
+            lon = float(row['lon'])
+            lat = float(row['lat'])
+            
+            # Create 1km square
+            offset = 0.0045
+            square = ee.Geometry.Polygon([[
+                [lon - offset, lat - offset],
+                [lon + offset, lat - offset],
+                [lon + offset, lat + offset],
+                [lon - offset, lat + offset],
+                [lon - offset, lat - offset]
+            ]])
+            
+            features.append(ee.Feature(square, {
+                'site_id': str(row['id']),
+                'timepoints': int(row['timepoint_count']) if 'timepoint_count' in row else 0
+            }))
+        except Exception as e:
+            print(f"[SCA Layer] Error processing row {idx}: {e}")
+            continue
+    
+    if not features:
+        print("[SCA Layer] No valid features created")
+        return None
+    
+    print(f"[SCA Layer] Created {len(features)} features")
+    
+    try:
+        fc = ee.FeatureCollection(features)
         
-        # Create 1km square
-        offset = 0.0045
-        square = ee.Geometry.Polygon([[
-            [lon - offset, lat - offset],
-            [lon + offset, lat - offset],
-            [lon + offset, lat + offset],
-            [lon - offset, lat + offset],
-            [lon - offset, lat - offset]
-        ]])
+        # Create outline visualization (green borders)
+        outline = ee.Image().byte().paint(
+            featureCollection=fc,
+            color=1,
+            width=3  # Border width in pixels
+        )
         
-        features.append(ee.Feature(square, {
-            'site_id': str(row.id),
-            'timepoints': int(row.timepoint_count) if hasattr(row, 'timepoint_count') else 0
-        }))
-    
-    fc = ee.FeatureCollection(features)
-    
-    # Create outline visualization (green borders)
-    outline = ee.Image().byte().paint(
-        featureCollection=fc,
-        color=1,
-        width=3  # Border width in pixels
-    )
-    
-    # Visualize as bright green outlines
-    return outline.visualize(**{
-        'palette': ['00ff00'],  # Bright green
-        'opacity': 1.0
-    })
+        # Visualize as bright green outlines
+        vis_image = outline.visualize(**{
+            'palette': ['00ff00'],  # Bright green
+            'opacity': 1.0
+        })
+        
+        print("[SCA Layer] ✅ Layer created successfully")
+        return vis_image
+        
+    except Exception as e:
+        print(f"[SCA Layer] ❌ Error creating GEE layer: {e}")
+        return None
+
 
 
 @st.cache_resource
@@ -801,12 +823,6 @@ with col_left:
 # RIGHT COLUMN: SITE ANALYSIS
 # ============================================================================
 with col_right:
-    
-    st.markdown("## 🛰️ Real-Time Satellite Surveillance (1km Grid)")
-    st.markdown("*Click on any grid cell to view detailed analysis and trends*")
-    
-    if not sca_ready_df.empty:
-        st.caption("🟢 **Green outlined sites** have sufficient time-series data for SCA analysis")
     
     if st.session_state.selected_site is None:
         # Global Overview
