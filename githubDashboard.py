@@ -23,24 +23,6 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 🔍 DEBUG: Show file structure
-with st.expander("🔍 DEBUG: File Structure"):
-    st.write("Current directory:", os.getcwd())
-    st.write("Files in current directory:", os.listdir('.'))
-    
-    if os.path.exists('dashboardData'):
-        st.write("✅ dashboardData exists!")
-        st.write("Files:", os.listdir('dashboardData'))
-    else:
-        st.write("❌ dashboardData folder not found!")
-    
-    if os.path.exists('dataset'):
-        st.write("✅ dataset exists!")
-        st.write("Files:", os.listdir('dataset'))
-    else:
-        st.write("❌ dataset folder not found!")
-
-
 # ============================================================================
 # CUSTOM CSS
 # ============================================================================
