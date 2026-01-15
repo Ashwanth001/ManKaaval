@@ -856,21 +856,6 @@ with col_right:
             unsafe_allow_html=True
         )
 
-        st.markdown("---")
-
-        # Site Information
-        st.markdown(f"**📍 Location:** {site_lat:.4f}°N, {site_lon:.4f}°E")
-        st.markdown(f"**🔎 Site ID:** {site_id}")
-
-        st.markdown("---")
-
-        # Time Series Plot
-        st.markdown("### 📈 Spectral Indices Over Time")
-        ts_fig = create_timeseries_plot(site_id, ts_df)
-        if ts_fig:
-            st.plotly_chart(ts_fig, use_container_width=True, key=f"ts_plot_{site_id}")
-        else:
-            st.info("No time-series data available for this site.")
 
         st.markdown("---")
 
