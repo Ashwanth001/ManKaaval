@@ -1,0 +1,23 @@
+# Secrets - NEVER COMMIT
+.streamlit/secrets.toml
+*-key.json
+*.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.DS_Store
+
+# Temporary files
+*.log
+.cache/
