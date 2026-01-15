@@ -784,12 +784,6 @@ with col_left:
 # ============================================================================
 with col_right:
     
-    st.markdown("## 🛰️ Real-Time Satellite Surveillance (1km Grid)")
-    st.markdown("*Click on any grid cell to view detailed analysis and trends*")
-    
-    if not sca_ready_df.empty:
-        st.caption("🟢 **Green outlined sites** have sufficient time-series data for SCA analysis")
-    
     if st.session_state.selected_site is None:
         # Global Overview
         st.markdown("## 📊 Global Overview")
