@@ -93,7 +93,7 @@ def load_data():
     """Load predictions and time-series data from CSV files"""
     try:
         # Load baseline features with predictions
-        baseline_path = r"dashboardData\baseline_features_predictions.csv"
+        baseline_path = "dashboardData\baseline_features_predictions.csv"
         if not os.path.exists(baseline_path):
             st.error(f"❌ Baseline features file not found at: {baseline_path}")
             return pd.DataFrame(), pd.DataFrame(), [], pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
@@ -122,7 +122,7 @@ def load_data():
             st.warning(f"⚠️ Time-series file not found at: {ts_path}")
 
         # Load SHAP values
-        shap_path = r"dashboardData\shap_values_baseline_features.csv"
+        shap_path = "dashboardData\shap_values_baseline_features.csv"
         shap_df = pd.DataFrame()
         if os.path.exists(shap_path):
             shap_df = pd.read_csv(shap_path)
@@ -130,7 +130,7 @@ def load_data():
             st.warning(f"⚠️ SHAP values file not found at: {shap_path}")
 
         # Load ground truth data
-        gt_path = r"dataset\cleanedGroundTruth2_indexed.csv"
+        gt_path = "dataset\cleanedGroundTruth2_indexed.csv"
         gt_df = pd.DataFrame()
         if os.path.exists(gt_path):
             gt_df = pd.read_csv(gt_path)
@@ -138,7 +138,7 @@ def load_data():
             st.warning(f"⚠️ Ground Truth file not found at: {gt_path}")
 
         # ✅ LOAD SCA-READY SITES CSV
-        sca_ready_path = r"dashboardData\sca_ready_sites.csv"
+        sca_ready_path = "dashboardData\sca_ready_sites.csv"
         sca_ready_df = pd.DataFrame()
         if os.path.exists(sca_ready_path):
             sca_ready_df = pd.read_csv(sca_ready_path)
