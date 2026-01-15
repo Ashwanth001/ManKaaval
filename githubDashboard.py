@@ -88,7 +88,7 @@ if 'last_click_coords' not in st.session_state:
 # ============================================================================
 # DATA LOADING WITH CACHING
 # ============================================================================
-@st.cache_data
+
 def load_data():
     """Load predictions and time-series data from CSV files"""
     try:
@@ -158,7 +158,7 @@ def load_data():
 # ============================================================================
 # GOOGLE EARTH ENGINE INITIALIZATION
 # ============================================================================
-@st.cache_resource
+
 def initialize_gee():
     """Initialize Google Earth Engine with service account for cloud deployment"""
     try:
@@ -188,7 +188,7 @@ def initialize_gee():
 # ============================================================================
 # MAP CREATION WITH 1KM GRID (SIMPLIFIED - REMOVED REDUNDANT LAYERS)
 # ============================================================================
-@st.cache_resource
+
 def get_grid_feature_collection(_df):
     """Cache the conversion of the large DataFrame to GEE FeatureCollection."""
     if _df is None or _df.empty:
@@ -217,7 +217,7 @@ def get_grid_feature_collection(_df):
 
     return ee.FeatureCollection(features)
 
-@st.cache_resource
+
 def get_sca_ready_layer(_sca_ready_df):
     """
     Create a GEE layer highlighting sites with sufficient time-series data.
@@ -262,7 +262,7 @@ def get_sca_ready_layer(_sca_ready_df):
     })
 
 
-@st.cache_resource
+
 def create_gee_river_grid(_df, gee_ready, selected_date=None, show_coords=False, aoi_coords=None, 
                           _prediction_df=None, _ground_truth_df=None, _sca_ready_df=None):
     """Create a Google Earth Engine map with 1km grid - CLEAN VERSION (no redundant layers)"""
