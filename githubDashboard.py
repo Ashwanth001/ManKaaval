@@ -633,26 +633,37 @@ def perform_sca_analysis(site_id, baseline_df, ts_df):
         })
         results_dict[metric] = metric_res
     
-    # Return top 5 control sites
-    control_ids = list(control_site_ids)[:5]
+    # ===== STEP 8: Calculate Attributable Damage (Impact) =====
+    damage_dict = {}
+    for metric in metrics:
+        # Damage is the cumulative sum of (Actual - Synthetic) in the POST period
+        post_data = df_sca[df_sca['period'] == 'POST']
+        damage_dict[metric] = post_data[f'effect_{metric}'].sum()
     
-    return control_ids, results_dict
+    return control_ids, results_dict, damage_dict
 
 
-def create_sca_plots(sca_results_dict):
+def create_sca_plots(sca_results_dict, damage_dict=None):
     """Create three subplots for SCA (NDVI, MNDWI, BSI) - Actual vs Synthetic"""
     if not sca_results_dict:
         return None
+
+    metrics = ['NDVI', 'MNDWI', 'BSI']
+    
+    # Generate dynamic titles with Attributable Damage
+    subplot_titles = []
+    for m in metrics:
+        title = f'{m} - Actual vs Synthetic'
+        if damage_dict and m in damage_dict:
+            damage = damage_dict[m]
+            title += f' (Attributable Damage: {damage:+.3f})'
+        subplot_titles.append(title)
 
     fig = make_subplots(
         rows=3, cols=1,
         shared_xaxes=True,
         vertical_spacing=0.1,
-        subplot_titles=(
-            'NDVI (Vegetation) - Actual vs Synthetic',
-            'MNDWI (Water) - Actual vs Synthetic',
-            'BSI (Soil) - Actual vs Synthetic'
-        )
+        subplot_titles=subplot_titles
     )
 
     metrics = ['NDVI', 'MNDWI', 'BSI']
@@ -877,7 +888,7 @@ with col_right:
         st.markdown("### Causal Verification (Synthetic Control Analysis)")
         
         with st.spinner("Running Synthetic Control Analysis..."):
-            control_ids, sca_results = perform_sca_analysis(site_id, df, ts_df)
+            control_ids, sca_results, damage_results = perform_sca_analysis(site_id, df, ts_df)
                 # 🔍 DEBUG INFO
             if "sca_debug_counter" in st.session_state:
                 st.caption(
@@ -890,8 +901,8 @@ with col_right:
                 st.success(f" Comparing treated sites against control sites")
                 
 
-                #  CREATE AND DISPLAY SCA PLOTS WITH KEY
-                sca_fig = create_sca_plots(sca_results)
+                #  CREATE AND DISPLAY SCA PLOTS WITH DAMAGE ATTRIBUTION
+                sca_fig = create_sca_plots(sca_results, damage_results)
                 if sca_fig:
                     st.plotly_chart(sca_fig, use_container_width=True, key=f"sca_plot_{site_id}")
                     st.caption("Blue dashed line shows the synthetic counterfactual. Divergence indicates mining-related changes.")
