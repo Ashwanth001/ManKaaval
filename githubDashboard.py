@@ -524,7 +524,7 @@ def perform_sca_analysis(site_id, baseline_df, ts_df):
     print(f"[SCA DEBUG] Run #{st.session_state.sca_debug_counter} for site {site_id}")
     
     if ts_df.empty or baseline_df.empty:
-        return None, None
+        return None, None, None
     
     # Ensure date is datetime
     ts_df = ts_df.copy()
@@ -535,7 +535,7 @@ def perform_sca_analysis(site_id, baseline_df, ts_df):
     
     if ts_treated.empty:
         print(f"[SCA] No time series data for site {site_id}")
-        return None, None
+        return None, None, None
     
     print(f"[SCA] Treated site {site_id}: {len(ts_treated)} time points")
     
@@ -547,7 +547,7 @@ def perform_sca_analysis(site_id, baseline_df, ts_df):
     
     if len(control_site_ids) == 0:
         print("[SCA] No control sites found")
-        return None, None
+        return None, None, None
     
     print(f"[SCA] Found {len(control_site_ids)} control sites")
     
@@ -556,7 +556,7 @@ def perform_sca_analysis(site_id, baseline_df, ts_df):
     
     if ts_control.empty:
         print("[SCA] No control time series")
-        return None, None
+        return None, None, None
     
     # Clean data
     ts_treated_clean = ts_treated[['date', 'NDVI', 'MNDWI', 'BSI']].dropna()
@@ -582,7 +582,7 @@ def perform_sca_analysis(site_id, baseline_df, ts_df):
     
     if len(df_sca) < 5:
         print(f"[SCA] Insufficient data points: {len(df_sca)}")
-        return None, None
+        return None, None, None
     
     print(f"[SCA] Merged data: {len(df_sca)} dates")
     
@@ -595,7 +595,7 @@ def perform_sca_analysis(site_id, baseline_df, ts_df):
     
     if len(df_pre) < 3 or len(df_post) < 3:
         print(f"[SCA] Insufficient pre/post data: {len(df_pre)}/{len(df_post)}")
-        return None, None
+        return None, None, None
     
     # ===== STEP 5: Fit synthetic control =====
     metrics = ['NDVI', 'MNDWI', 'BSI']
@@ -640,7 +640,7 @@ def perform_sca_analysis(site_id, baseline_df, ts_df):
         post_data = df_sca[df_sca['period'] == 'POST']
         damage_dict[metric] = post_data[f'effect_{metric}'].sum()
     
-    return control_ids, results_dict, damage_dict
+    return control_site_ids, results_dict, damage_dict
 
 
 def create_sca_plots(sca_results_dict, damage_dict=None):
@@ -896,7 +896,7 @@ with col_right:
                     f"Last run for site **{st.session_state.sca_last_site}** "
                     f"at **{st.session_state.sca_last_time}**."
                 )
-            if control_ids and sca_results:
+            if control_ids is not None and sca_results is not None:
                 st.session_state.sca_control_ids = control_ids
                 st.success(f" Comparing treated sites against control sites")
                 
