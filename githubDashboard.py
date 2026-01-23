@@ -13,20 +13,6 @@ import time
 from sklearn.linear_model import Ridge
 from scipy.spatial.distance import cdist
 
-import hashlib
-
-def get_dataframe_hash(df):
-    """Create a hash of DataFrame content for cache invalidation"""
-    if df is None or df.empty:
-        return "empty"
-    # Hash the first/last rows and shape to detect changes
-    try:
-        content = f"{df.shape}_{df.iloc[0].to_dict()}_{df.iloc[-1].to_dict()}"
-        return hashlib.md5(content.encode()).hexdigest()[:16]
-    except:
-        return "error"
-
-
 # ============================================================================
 # PAGE CONFIGURATION
 # ============================================================================
@@ -203,123 +189,83 @@ def initialize_gee():
 # MAP CREATION WITH 1KM GRID (SIMPLIFIED - REMOVED REDUNDANT LAYERS)
 # ============================================================================
 
-@st.cache_data(ttl=3600)  # Cache for 1 hour
-def get_grid_feature_collection_cached(df_hash, _df):
-    """Cache the conversion of DataFrame to list of features (not GEE objects)"""
+def get_grid_feature_collection(_df):
+    """Cache the conversion of the large DataFrame to GEE FeatureCollection."""
     if _df is None or _df.empty:
         return None
-    
-    features_data = []
+
+    features = []
     for row in _df.itertuples():
+        # Create centered 1km x 1km square around each point
         lon = float(row.lon)
         lat = float(row.lat)
+        # Calculate approximate 1km offset in degrees
         offset = 0.0045
-        
-        features_data.append({
-            'geometry': [[
-                [lon - offset, lat - offset],
-                [lon + offset, lat - offset],
-                [lon + offset, lat + offset],
-                [lon - offset, lat + offset],
-                [lon - offset, lat - offset]
-            ]],
-            'properties': {
-                'probability': float(row.probability),
-                'site_id': str(row.id),
-                'lon': lon,
-                'lat': lat
-            }
-        })
-    
-    return features_data
+        square = ee.Geometry.Polygon([[
+            [lon - offset, lat - offset],
+            [lon + offset, lat - offset],
+            [lon + offset, lat + offset],
+            [lon - offset, lat + offset],
+            [lon - offset, lat - offset]
+        ]])
+        features.append(ee.Feature(square, {
+            'probability': float(row.probability),
+            'site_id': str(row.id),
+            'lon': lon,
+            'lat': lat
+        }))
 
-def get_grid_feature_collection(_df):
-    """Convert cached feature data to GEE FeatureCollection"""
-    if _df is None or _df.empty:
-        return None
-    
-    df_hash = get_dataframe_hash(_df)
-    features_data = get_grid_feature_collection_cached(df_hash, _df)
-    
-    if not features_data:
-        return None
-    
-    # Convert to GEE objects (not cached - fast operation)
-    features = []
-    for feat in features_data:
-        geom = ee.Geometry.Polygon(feat['geometry'])
-        features.append(ee.Feature(geom, feat['properties']))
-    
     return ee.FeatureCollection(features)
 
 
-@st.cache_data(ttl=3600)
-def get_sca_ready_features_cached(df_hash, _df):
-    """Cache SCA feature data"""
-    if _df is None or _df.empty:
-        return None
-    
-    features_data = []
-    for row in _df.itertuples():
-        lon = float(row.lon)
-        lat = float(row.lat)
-        offset = 0.0045
-        
-        features_data.append({
-            'geometry': [[
-                [lon - offset, lat - offset],
-                [lon + offset, lat - offset],
-                [lon + offset, lat + offset],
-                [lon - offset, lat + offset],
-                [lon - offset, lat - offset]
-            ]],
-            'properties': {
-                'site_id': str(row.id),
-                'timepoints': int(row.timepoint_count) if hasattr(row, 'timepoint_count') else 0
-            }
-        })
-    
-    return features_data
-
 def get_sca_ready_layer(_sca_ready_df):
-    """Create GEE layer for SCA-ready sites"""
+    """
+    Create a GEE layer highlighting sites with sufficient time-series data.
+    Returns a visualization layer showing SCA-ready sites with green outlines.
+    """
     if _sca_ready_df is None or _sca_ready_df.empty:
         return None
     
-    df_hash = get_dataframe_hash(_sca_ready_df)
-    features_data = get_sca_ready_features_cached(df_hash, _sca_ready_df)
-    
-    if not features_data:
-        return None
-    
-    # Convert to GEE objects
     features = []
-    for feat in features_data:
-        geom = ee.Geometry.Polygon(feat['geometry'])
-        features.append(ee.Feature(geom, feat['properties']))
+    for row in _sca_ready_df.itertuples():
+        lon = float(row.lon)
+        lat = float(row.lat)
+        
+        # Create 1km square
+        offset = 0.0045
+        square = ee.Geometry.Polygon([[
+            [lon - offset, lat - offset],
+            [lon + offset, lat - offset],
+            [lon + offset, lat + offset],
+            [lon - offset, lat + offset],
+            [lon - offset, lat - offset]
+        ]])
+        
+        features.append(ee.Feature(square, {
+            'site_id': str(row.id),
+            'timepoints': int(row.timepoint_count) if hasattr(row, 'timepoint_count') else 0
+        }))
     
     fc = ee.FeatureCollection(features)
     
-    # Create outline visualization
+    # Create outline visualization (green borders)
     outline = ee.Image().byte().paint(
         featureCollection=fc,
         color=1,
-        width=3
+        width=3  # Border width in pixels
     )
     
+    # Visualize as bright green outlines
     return outline.visualize(**{
-        'palette': ['00ff00'],
+        'palette': ['00ff00'],  # Bright green
         'opacity': 1.0
     })
 
 
 
-
-@st.cache_resource(ttl=1800)  # Cache for 30 minutes
 def create_gee_river_grid(_df, gee_ready, selected_date=None, show_coords=False, aoi_coords=None, 
-                          _prediction_df=None, _ground_truth_df=None, _sca_ready_df=None,
-                          pred_hash="", sca_hash=""):  # ← Add hash parameters
-    """Create a Google Earth Engine map with 1km grid"""
+                          _prediction_df=None, _ground_truth_df=None, _sca_ready_df=None):
+    """Create a Google Earth Engine map with 1km grid - CLEAN VERSION (no redundant layers)"""
 
     # Base map initialization
     center = [25.5, 85.5]
@@ -344,6 +290,7 @@ def create_gee_river_grid(_df, gee_ready, selected_date=None, show_coords=False,
         return m
 
     try:
+        # ✅ ADD ONLY SATELLITE BASEMAP - NO OPENSTREETMAP
         m.add_basemap("SATELLITE")
 
         if aoi_coords:
@@ -362,17 +309,20 @@ def create_gee_river_grid(_df, gee_ready, selected_date=None, show_coords=False,
 
         # ===== 1KM GRID GENERATION WITH ACTUAL PREDICTIONS =====
         if _prediction_df is not None and not _prediction_df.empty:
+            # RETRIEVE CACHED FEATURE COLLECTION
             sites_fc = get_grid_feature_collection(_prediction_df)
+            # Create image from polygons
             prob_image = ee.Image().float().paint(sites_fc, 'probability')
             prob_image = prob_image.clip(roi)
         else:
+            # Fallback to random for preview
             proj = ee.Projection('EPSG:3857').atScale(1000)
             prob_image = ee.Image.random(seed=99).reproject(proj).clip(roi)
 
         # Apply river mask
         grid_masked = prob_image.updateMask(buffered_river_mask)
 
-        # Visualization
+        # Visualization - ONLY MINING RISK LAYER (no grid boundaries)
         fill_vis = grid_masked.visualize(**{
             'min': 0,
             'max': 1,
@@ -382,15 +332,15 @@ def create_gee_river_grid(_df, gee_ready, selected_date=None, show_coords=False,
 
         m.addLayer(fill_vis, {}, "Mining Activity Risk (1km Grid)", True)
 
-        # ✅ ADD SCA-READY SITES LAYER
+        # ✅ ADD SCA-READY SITES LAYER (green outlines)
         if _sca_ready_df is not None and not _sca_ready_df.empty:
             sca_layer = get_sca_ready_layer(_sca_ready_df)
             if sca_layer:
                 m.addLayer(
                     sca_layer, 
                     {}, 
-                    f"SCA-Ready Sites ({len(_sca_ready_df)} sites)", 
-                    True
+                    f"SCA-Ready Sites ({len(_sca_ready_df)} sites with 5+ timepoints)", 
+                    True  # Visible by default
                 )
 
         # ✅ ADD AOI BOUNDARY IF PROVIDED
@@ -406,7 +356,6 @@ def create_gee_river_grid(_df, gee_ready, selected_date=None, show_coords=False,
         st.code(traceback.format_exc())
         m.add_basemap("SATELLITE")
         return m
-
 
 
 # ============================================================================
@@ -782,19 +731,11 @@ if not sca_ready_df.empty:
     st.sidebar.metric("Total Sites", f"{len(df):,}")
     if len(df) > 0:
         st.sidebar.caption(f"{(len(sca_ready_df)/len(df)*100):.1f}% have sufficient time-series data")
-    # In sidebar
-    
-with st.sidebar:
-    st.markdown("---")
-    if st.button("🔄 Refresh Map Data"):
-        st.cache_data.clear()
-        st.cache_resource.clear()
-        st.success("✅ Cache cleared!")
-        st.rerun()
 
 # ============================================================================
 # LEFT COLUMN: INTERACTIVE MAP
 # ============================================================================
+
 with col_left:
     st.markdown("## 🛰️ Real-Time Satellite Surveillance (1km Grid)")
     st.markdown("*Click on any grid cell to view detailed analysis and trends*")
@@ -802,29 +743,45 @@ with col_left:
     if not sca_ready_df.empty:
         st.caption("🟢 **Green outlined sites** have sufficient time-series data for SCA analysis")
 
-    with st.spinner("🗺️ Loading satellite imagery and predictions..."):
-        # Calculate hashes for cache invalidation
-        pred_hash = get_dataframe_hash(df)
-        sca_hash = get_dataframe_hash(sca_ready_df)
-        
-        gee_map = create_gee_river_grid(
-            df, gee_ready, None, False,
-            aoi_coords=None,
-            _prediction_df=df if not df.empty else None,
-            _ground_truth_df=None,
-            _sca_ready_df=sca_ready_df if not sca_ready_df.empty else None,
-            pred_hash=pred_hash,  # ← Cache will refresh if data changes
-            sca_hash=sca_hash
-        )
+    # ✅ ONLY CREATE MAP ONCE - Cache the map object itself
+    if 'gee_map' not in st.session_state or st.session_state.get('force_map_refresh', False):
+        with st.spinner("🗺️ Loading satellite imagery and predictions..."):
+            st.session_state.gee_map = create_gee_river_grid(
+                df, gee_ready, None, False,
+                aoi_coords=None,
+                _prediction_df=df if not df.empty else None,
+                _ground_truth_df=None,
+                _sca_ready_df=sca_ready_df if not sca_ready_df.empty else None
+            )
+        st.session_state.force_map_refresh = False
 
-    # Render map
+    # ✅ RENDER CACHED MAP (fast!)
     map_output = st_folium(
-        gee_map,
+        st.session_state.gee_map,  # ← Use cached map
         width="100%",
         height=600,
         returned_objects=["last_clicked"],
         key="mankaaval_map"
     )
+
+    # Handle click events
+    if map_output and map_output.get("last_clicked"):
+        click_lat = map_output["last_clicked"]["lat"]
+        click_lon = map_output["last_clicked"]["lng"]
+
+        last_click = st.session_state.get('last_click_coords')
+        current_click = (click_lat, click_lon)
+
+        if last_click != current_click:
+            st.session_state.last_click_coords = current_click
+
+            selected = find_nearest_site(click_lat, click_lon, df)
+
+            if selected is not None:
+                st.session_state.selected_site = selected
+            else:
+                st.session_state.selected_site = None
+                st.warning("⚠️ No mining site found at this location. Click closer to a grid cell.")
 
 
 # ============================================================================
@@ -850,6 +807,19 @@ with col_right:
                 st.metric("High Risk", f"{high_risk_count:,}", delta=f"{(high_risk_count/total_sites)*100:.1f}%", delta_color="inverse")
 
             st.metric("Average Risk", f"{avg_risk*100:.1f}%")
+
+            st.markdown("---")
+            st.markdown("### 📈 Risk Distribution")
+            fig_dist = px.histogram(df, x='probability', nbins=30, color_discrete_sequence=['#00d4ff'])
+            fig_dist.update_layout(
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(30,30,30,0.5)',
+                font_color='white',
+                height=250,
+                margin=dict(l=0, r=0, t=10, b=0),
+                showlegend=False
+            )
+            st.plotly_chart(fig_dist, use_container_width=True)
 
             st.markdown("---")
             st.markdown("### 🎯 Top Risk Sites")
@@ -886,21 +856,6 @@ with col_right:
             unsafe_allow_html=True
         )
 
-        st.markdown("---")
-
-        # Site Information
-        st.markdown(f"**📍 Location:** {site_lat:.4f}°N, {site_lon:.4f}°E")
-        st.markdown(f"**🔎 Site ID:** {site_id}")
-
-        st.markdown("---")
-
-        # Time Series Plot
-        st.markdown("### 📈 Spectral Indices Over Time")
-        ts_fig = create_timeseries_plot(site_id, ts_df)
-        if ts_fig:
-            st.plotly_chart(ts_fig, use_container_width=True, key=f"ts_plot_{site_id}")
-        else:
-            st.info("No time-series data available for this site.")
 
         st.markdown("---")
 
