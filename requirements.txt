@@ -1,14 +1,14 @@
 streamlit==1.31.0
-pandas>=2.2.0           # 2.1.4 is incompatible with Py3.12
-numpy>=1.26.4           # 1.25.1 depends on distutils (removed in Py3.12)
+pandas>=2.2.0
+numpy>=1.26.4
 earthengine-api>=0.1.384
-geemap>=0.30.1
+geemap>=0.32.1        # CRITICAL: Upgrade to fix the Box/xyz_to_folium error
 streamlit-folium>=0.18.0
 plotly>=5.18.0
 xgboost>=2.0.3
 scikit-learn>=1.4.0
 scipy>=1.12.0
 folium>=0.15.1
-shap>=0.44.1            # Older SHAP also fails on Py3.12
+shap>=0.44.1
 xyzservices>=2023.10.1
 python-box>=7.1.1
