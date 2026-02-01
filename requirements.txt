@@ -1,14 +1,14 @@
 streamlit==1.31.0
-pandas>=2.2.0
-numpy>=1.26.4
-earthengine-api>=0.1.384
-geemap>=0.32.1        # CRITICAL: Upgrade to fix the Box/xyz_to_folium error
-streamlit-folium>=0.18.0
-plotly>=5.18.0
-xgboost>=2.0.3
-scikit-learn>=1.4.0
-scipy>=1.12.0
-folium>=0.15.1
-shap>=0.44.1
-xyzservices>=2023.10.1
-python-box>=7.1.1
+pandas==2.2.0
+numpy==1.26.4
+earthengine-api==1.7.10
+geemap==0.37.1
+streamlit-folium==0.26.1
+plotly==6.5.2
+xgboost==3.0.3
+scikit-learn==1.8.0
+scipy==1.17.0
+folium==0.20.0
+shap==0.45.0
+xyzservices==2025.11.0
+python-box==7.3.2
