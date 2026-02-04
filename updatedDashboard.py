@@ -278,10 +278,8 @@ def create_folium_grid_map(df, sca_ready_df=None):
             
             # Create 1km x 1km square outline
             bounds = [
-                [lat - offset, lon - offset],
-                [lat - offset, lon + offset],
-                [lat + offset, lon + offset],
-                [lat + offset, lon - offset],
+                [lat - offset, lon - offset],  # SW corner
+                [lat + offset, lon + offset],  # NE corner
             ]
             
             popup_html = f"""
