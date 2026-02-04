@@ -216,11 +216,9 @@ def create_folium_grid_map(df, sca_ready_df=None):
         
         # Create 1km x 1km square
         bounds = [
-            [lat - offset, lon - offset],  # SW corner
-            [lat - offset, lon + offset],  # SE corner
-            [lat + offset, lon + offset],  # NE corner
-            [lat + offset, lon - offset],  # NW corner
-        ]
+                [lat - offset, lon - offset],  # SW corner
+                [lat + offset, lon + offset],  # NE corner
+            ]
         
         # Determine color based on probability
         fill_color = get_risk_color(prob)
