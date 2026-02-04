@@ -196,14 +196,17 @@ def create_folium_grid_map(df, sca_ready_df=None):
     grid_layer = folium.FeatureGroup(name='Mining Risk Grid (1km)', show=True)
     sca_layer = folium.FeatureGroup(name=f'SCA-Ready Sites ({len(sca_ready_df) if sca_ready_df is not None and not sca_ready_df.empty else 0})', show=True)
     
-    # Create color scale legend
-    colormap = cm.LinearColormap(
-        colors=['#00ff00', '#ffff00', '#ff0000'],
-        vmin=0,
-        vmax=1,
-        caption='Mining Risk Probability'
-    )
-    colormap.add_to(m)
+    # Add layers to map
+    grid_layer.add_to(m)
+    sca_layer.add_to(m)
+    
+    # Add layer control
+    folium.LayerControl(position='topright', collapsed=False).add_to(m)
+    
+    # Note: Colormap, Fullscreen, and MousePosition plugins are removed
+    # because they contain functions that can't be JSON-serialized by st_folium
+    
+    return m
     
     # Add 1km grid cells for each site
     offset = 0.0045  # Approximate 1km in degrees
@@ -310,14 +313,7 @@ def create_folium_grid_map(df, sca_ready_df=None):
     
     # Add layer control
     folium.LayerControl(position='topright', collapsed=False).add_to(m)
-    
-    # Add fullscreen button
-    plugins.Fullscreen(
-        position='topleft',
-        title='Fullscreen',
-        title_cancel='Exit Fullscreen',
-        force_separate_button=True
-    ).add_to(m)
+
     
     # Add mouse position display
     plugins.MousePosition().add_to(m)
